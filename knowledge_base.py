@@ -25,7 +25,10 @@ def check_md5(md5_str: str):
     
     # 如果存在 读取 md5 文件 判断 md5_str 是否在文件中
     with open(config.md5_path, 'r', encoding='utf-8') as f:
-        return md5_str in f.read().splitlines()
+        for line in f:
+            if line.strip() == md5_str:
+                return True
+    return False
 
 
 def save_md5(md5_str: str):
@@ -55,7 +58,7 @@ def get_string_md5(input_str: str, encoding='utf-8'):
     return md5.hexdigest()
 
 
-class KnowledgeBase:
+class KnowledgeBaseService:
     def __init__(self):
         # 确保向量数据库的存储目录存在，如果不存在则创建
         os.makedirs(config.persist_directory, exist_ok=True)
@@ -86,11 +89,8 @@ class KnowledgeBase:
         if check_md5(md5_str):
             return "[WARN] 内容已经存在于知识库中..."
         
-        # 进行文本分割
-        if len(data) > config.max_split_char_number:
-            knowledge_chunks = self.splitter.split_text(data)   # list[str]
-        else:
-            knowledge_chunks = [data]   # list[str]
+        # 将字符串进行分割，得到文本块列表
+        knowledge_chunks = self.splitter.split_text(data)   # list[str]
 
         # 构建元数据
         metadata = {
@@ -112,9 +112,6 @@ class KnowledgeBase:
 
 
 if __name__ == "__main__":
-    # 设置临时环境变量
-    os.environ["DASHSCOPE_API_KEY"] = ""
-
-    kb = KnowledgeBase()
+    kb = KnowledgeBaseService()
     result = kb.upload_by_str("这是一个测试文本，用于验证知识库的上传功能。", "testfile")
     print(result)
