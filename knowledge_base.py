@@ -1,6 +1,10 @@
 import os
 import config
 import hashlib
+from langchain_chroma import Chroma
+from langchain_community.embeddings import DashScopeEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from datetime import datetime
 
 
 def check_md5(md5_str: str):
@@ -53,27 +57,64 @@ def get_string_md5(input_str: str, encoding='utf-8'):
 
 class KnowledgeBase:
     def __init__(self):
-        self.chroma = None      # 向量数据库对象
-        self.splitter = None    # 文本分割器对象
+        # 确保向量数据库的存储目录存在，如果不存在则创建
+        os.makedirs(config.persist_directory, exist_ok=True)
 
-    def upload_by_str(self, data, file_name):
+        # 向量数据库对象
+        self.chroma = Chroma(
+            collection_name=config.collection_name,                             # 集合名称，相当于数据库中的 "表名"，用于区分不同的知识库      
+            embedding_function=DashScopeEmbeddings(model="text-embedding-v4"),  # 嵌入模型 将文本转换为向量
+            persist_directory=config.persist_directory,                         # 向量数据的本地存储路径，重启后数据不会丢失
+        )    
+
+        # 文本分割器对象  
+        self.splitter = RecursiveCharacterTextSplitter(
+            chunk_size=config.chunk_size,       # 每个分块的最大长度，超过则继续分割
+            chunk_overlap=config.chunk_overlap, # 相邻块之间的重叠量，保证语义连贯性
+            separators=config.separators,       # 分隔符优先级列表，优先按大段落分割
+            length_function=len                 # 计算文本长度的方法，这里用 len() 即按字符数
+        )    
+
+    def upload_by_str(self, data: str, file_name):
         """
         将传入的字符串进行向量化处理 并存入向量数据库中
         """
-        pass
+        # 获取字符串的 md5 值
+        md5_str = get_string_md5(data)
+
+        # 检查 md5 是否已经处理过，如果处理过则直接返回
+        if check_md5(md5_str):
+            return "[WARN] 内容已经存在于知识库中..."
+        
+        # 进行文本分割
+        if len(data) > config.max_split_char_number:
+            knowledge_chunks = self.splitter.split_text(data)   # list[str]
+        else:
+            knowledge_chunks = [data]   # list[str]
+
+        # 构建元数据
+        metadata = {
+            "source": file_name,
+            "create_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "operator": "admin"
+        }
+
+        # 将分割后的文本块和对应的元数据添加到向量数据库中
+        self.chroma.add_texts(
+            knowledge_chunks, 
+            metadatas=[metadata for _ in knowledge_chunks]  # list[dict] 每个文本块对应一份元数据
+        )
+
+        # 保存 md5 值到文件中，表示该内容已经处理过
+        save_md5(md5_str)
+
+        return "[SUCCESS] 内容已成功上传到知识库中..."
 
 
 if __name__ == "__main__":
-    md5_1 = get_string_md5("钟离")
-    md5_2 = get_string_md5("温迪")
-    md5_3 = get_string_md5("温迪")
-    md5_4 = get_string_md5("可莉")
-    print(md5_1, md5_2, md5_3, md5_4, sep='\n')
+    # 设置临时环境变量
+    os.environ["DASHSCOPE_API_KEY"] = ""
 
-    save_md5(md5_1)
-    save_md5(md5_2)
-    
-    print(check_md5(md5_1))  # True
-    print(check_md5(md5_2))  # True
-    print(check_md5(md5_3))  # True
-    print(check_md5(md5_4))  # False
+    kb = KnowledgeBase()
+    result = kb.upload_by_str("这是一个测试文本，用于验证知识库的上传功能。", "testfile")
+    print(result)
