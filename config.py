@@ -13,3 +13,6 @@ separators = ["\n\n", "\n", ".", "!", "?", "。", "！", "？", " ", ""]
 # topk
 similarity_topk = 1
 
+# model
+embedding_model = "text-embedding-v4"
+chat_model = "qwen3-max"

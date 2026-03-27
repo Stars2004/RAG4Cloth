@@ -65,9 +65,9 @@ class KnowledgeBaseService:
 
         # 向量数据库对象
         self.chroma = Chroma(
-            collection_name=config.collection_name,                             # 集合名称，相当于数据库中的 "表名"，用于区分不同的知识库      
-            embedding_function=DashScopeEmbeddings(model="text-embedding-v4"),  # 嵌入模型 将文本转换为向量
-            persist_directory=config.persist_directory,                         # 向量数据的本地存储路径，重启后数据不会丢失
+            collection_name=config.collection_name,                                 # 集合名称，相当于数据库中的 "表名"，用于区分不同的知识库      
+            embedding_function=DashScopeEmbeddings(model=config.embedding_model),   # 嵌入模型 将文本转换为向量
+            persist_directory=config.persist_directory,                             # 向量数据的本地存储路径，重启后数据不会丢失
         )    
 
         # 文本分割器对象  

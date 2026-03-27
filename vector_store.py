@@ -15,13 +15,20 @@ class VectorStoreService:
         )
 
     def get_retriever(self):
-        """返回向量检索器，方便加入 chain"""
+        """
+        返回向量检索器，方便加入 chain
+
+        Returns:
+            list[Document]: _description_
+        """
+        # 把向量数据库变成一个可以 "根据问题找相关内容" 的工具，为后面的 LLM 提供上下文。
         return self.vector_store.as_retriever(search_kwargs={"k": config.similarity_topk})
 
 
 if __name__ == '__main__':
     from langchain_community.embeddings import DashScopeEmbeddings
 
+    # 返回向量检索器 list[Document]
     retriever = VectorStoreService(DashScopeEmbeddings(model="text-embedding-v4")).get_retriever()
 
     # res = retriever.invoke("我的体重 180 斤，尺码推荐")
